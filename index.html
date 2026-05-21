@@ -1,12 +1,514 @@
+<!DOCTYPE html>
+
 <html>
-    <head>
-		<title>Test Web App 3</title>
+	<head>
+		<title>Test Web App 4</title>
 	</head>
-    <body>
-        <h1>
-            <a href="./documentation/index.html">
-                Click Me!
-            </a>
-        </h1>
-    </body>
+	<body>
+		<div id="button-container"></div>
+		<div id="display-area"></div>
+		<div id="buttons"></div>
+		<div id="centerOverlay"></div>
+		<script>
+// dst/web_user_interfacing/web_ui_component.js
+var web_UI_style = class {
+  backgroundColor;
+  color;
+  borderColor;
+  fontSize;
+  fontFamily;
+  textAlign;
+  display;
+  justifyContent;
+  alignItems;
+  padding;
+  constructor(backgroundColor = "#FFFFFF", color = "#000000", borderColor = "#000000", fontSize = "16px", fontFamily = "Arial, sans-serif", textAlign = "center", display = "flex", justifyContent = "center", alignItems = "center", padding = "0px") {
+    this.backgroundColor = backgroundColor;
+    this.color = color;
+    this.borderColor = borderColor;
+    this.fontSize = fontSize;
+    this.fontFamily = fontFamily;
+    this.textAlign = textAlign;
+    this.display = display;
+    this.justifyContent = justifyContent;
+    this.alignItems = alignItems;
+    this.padding = padding;
+  }
+  apply(el) {
+    el.style.backgroundColor = this.backgroundColor;
+    el.style.color = this.color;
+    el.style.border = `2px solid ${this.borderColor}`;
+    el.style.fontSize = this.fontSize;
+    el.style.fontFamily = this.fontFamily;
+    el.style.textAlign = this.textAlign;
+    el.style.display = this.display;
+    el.style.justifyContent = this.justifyContent;
+    el.style.alignItems = this.alignItems;
+    el.style.padding = this.padding;
+  }
+};
+var web_UI_component = class {
+  type;
+  styleConfig;
+  element;
+  constructor(type, styles, styleConfig, content = "") {
+    this.type = type;
+    this.styleConfig = styleConfig;
+    if (type === "svg") {
+      this.element = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      this.element.innerHTML = content;
+    } else {
+      const tag = type === "text" || type === "password" ? "input" : "div";
+      this.element = document.createElement(tag);
+      if (tag === "input") {
+        this.element.type = type;
+        this.element.placeholder = content;
+      } else {
+        this.element.innerText = content;
+      }
+    }
+    Object.assign(this.element.style, styles);
+    this.element.style.position = "fixed";
+    this.element.style.boxSizing = "border-box";
+    this.styleConfig.apply(this.element);
+    this.element.style.left = this.element.style.left || "0vw";
+    this.element.style.top = this.element.style.top || "0vh";
+    const append = () => {
+      if (!document.body.contains(this.element)) {
+        document.body.appendChild(this.element);
+      }
+    };
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", append);
+    } else {
+      append();
+    }
+  }
+  onEnter(callback) {
+    if (this.element instanceof HTMLInputElement) {
+      this.element.addEventListener("keydown", (e) => {
+        if (e.key === "Enter")
+          callback();
+      });
+    }
+  }
+  getValue() {
+    return this.element.value || "";
+  }
+  show() {
+    this.element.style.display = this.element.tagName === "INPUT" ? "inline-block" : "flex";
+    this.element.style.visibility = "visible";
+  }
+  hide() {
+    this.element.style.display = "none";
+    this.element.style.visibility = "hidden";
+  }
+  setOnClick(callback) {
+    this.element.addEventListener("click", callback);
+  }
+};
+var web_UI_page = class {
+  name;
+  components = [];
+  constructor(name) {
+    this.name = name;
+  }
+  addComponent(comp) {
+    this.components.push(comp);
+    comp.hide();
+  }
+  show() {
+    this.components.forEach((c) => c.show());
+  }
+  hide() {
+    this.components.forEach((c) => c.hide());
+  }
+};
+var web_UI_page_manager = class _web_UI_page_manager {
+  static pages = {};
+  static register(name, page) {
+    _web_UI_page_manager.pages[name] = page;
+  }
+  static switchTo(name) {
+    for (const k in _web_UI_page_manager.pages) {
+      _web_UI_page_manager.pages[k]?.hide();
+    }
+    _web_UI_page_manager.pages[name]?.show();
+  }
+};
+
+// dst/testing/testing5.js
+function generate_table(page, styles, data, columns, x_start, y_start) {
+  const row_height = 5;
+  const row_gap = 6;
+  columns.forEach((col, i) => {
+    if (styles.title != void 0) {
+      const left_offset = columns.slice(0, i).reduce((acc, c) => acc + parseInt(c.width), 0);
+      const header = new web_UI_component("div", { top: `${y_start}vh`, left: `${x_start + left_offset}vw`, width: col.width, height: `${row_height}vh` }, styles.title, col.header);
+      page.addComponent(header);
+    }
+  });
+  data.forEach((row, row_idx) => {
+    row.forEach((cell_text, col_idx) => {
+      if (styles.input != void 0) {
+        const left_offset = columns.slice(0, col_idx).reduce((acc, c) => acc + parseInt(c.width), 0);
+        const top_pos = y_start + (row_idx + 1) * row_gap;
+        const cell = new web_UI_component("div", { top: `${top_pos}vh`, left: `${x_start + left_offset}vw`, width: String(columns[col_idx]?.width), height: `${row_height}vh` }, styles.input, cell_text);
+        page.addComponent(cell);
+      }
+    });
+  });
+}
+function createStyles() {
+  return {
+    // 'primary' and 'input' now 24px
+    primary: new web_UI_style("#00008B", "#FF8C00", "#FF8C00", "24pt", "Arial", "center", "flex", "center", "center", "10px"),
+    input: new web_UI_style("#FFFFFF", "#000000", "#00008B", "24pt", "Arial", "left", "block", "center", "center", "10px"),
+    // 'header' style for titles at 36px
+    header: new web_UI_style("#00008B", "#FF8C00", "#00008B", "36pt", "Arial", "center", "flex", "center", "center", "0px"),
+    title: new web_UI_style("#FFFFFF", "#00008B", "#FFFFFF", "36pt", "Arial", "center", "flex", "center", "center", "0px")
+  };
+}
+function createPages() {
+  const pages = {
+    login: new web_UI_page("Login"),
+    nav: new web_UI_page("Navigation"),
+    profile: new web_UI_page("User Profile"),
+    users: new web_UI_page("Users"),
+    inspection: new web_UI_page("Inspection")
+  };
+  Object.entries(pages).forEach(([k, p]) => web_UI_page_manager.register(k, p));
+  return pages;
+}
+function add_header(page, styles) {
+  if (styles.header != void 0) {
+    const header = new web_UI_component("div", { top: "0vh", left: "0vw", width: "100vw", height: "8vh" }, styles.header, "Shipworkz Inspection Reporting Tool");
+    page.addComponent(header);
+  }
+}
+function add_header_elements(page, styles, title_text = "") {
+  if (styles.header != void 0 && styles.primary != void 0 && styles.title != void 0) {
+    const header = new web_UI_component("div", { top: "0vh", left: "0vw", width: "100vw", height: "8vh" }, styles.header, "Shipworkz Inspection Reporting Tool");
+    page.addComponent(header);
+    const back_svg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>`;
+    const back_btn = new web_UI_component("svg", { top: "9vh", left: "1vw", width: "4vw", height: "4vh" }, styles.primary, back_svg);
+    back_btn.setOnClick(() => {
+      web_UI_page_manager.switchTo("nav");
+    });
+    page.addComponent(back_btn);
+    if (title_text != "") {
+      const title = new web_UI_component("div", { top: "10vh", left: "5vw", width: "90vw", height: "6vh" }, styles.title, title_text);
+      page.addComponent(title);
+    }
+  }
+}
+function populate_login_page(pages, styles) {
+  let userField;
+  let passField;
+  let loginBtn;
+  if (styles.input != void 0 && styles.primary != void 0) {
+    userField = new web_UI_component("text", { top: "30vh", left: "40vw", width: "20vw", height: "5vh" }, styles.input, "Username");
+    passField = new web_UI_component("password", { top: "40vh", left: "40vw", width: "20vw", height: "5vh" }, styles.input, "Password");
+    loginBtn = new web_UI_component("div", { top: "50vh", left: "40vw", width: "20vw", height: "5vh" }, styles.primary, "Login");
+  } else {
+    console.error("Input or primary style is not defined");
+    return;
+  }
+  const doLogin = () => {
+    if (userField.getValue() === "abhi" && passField.getValue() === "abhi123") {
+      web_UI_page_manager.switchTo("nav");
+    } else {
+      alert("Invalid Credentials");
+    }
+  };
+  loginBtn.setOnClick(doLogin);
+  passField.onEnter(doLogin);
+  if (pages["login"] != void 0) {
+    add_header(pages["login"], styles);
+    pages["login"].addComponent(userField);
+    pages["login"].addComponent(passField);
+    pages["login"].addComponent(loginBtn);
+  }
+}
+function populate_nav_page(pages, styles) {
+  if (pages["nav"] != void 0 && styles.title != void 0) {
+    add_header(pages["nav"], styles);
+    const title = new web_UI_component("div", { top: "10vh", left: "10vw", width: "80vw", height: "5vh" }, styles.title, "Navigate App");
+    pages["nav"].addComponent(title);
+    const nav_items = ["User Profile", "Users", "Forms", "Report Publication Templates", "Reports", "Tasks", "Analytics", "Inspection"];
+    const btn_width = 20;
+    nav_items.forEach((label, i) => {
+      const row = Math.floor(i / 3);
+      const col = i % 3;
+      const top = 25 + row * 15;
+      let left;
+      if (i < 6) {
+        left = 13.3 + col * 26.6;
+      } else {
+        left = 40;
+      }
+      if (styles.primary != void 0 && pages["nav"] != void 0) {
+        const btn = new web_UI_component("div", { top: `${top}vh`, left: `${left}vw`, width: `${btn_width}vw`, height: "10vh" }, styles.primary, label);
+        pages["nav"].addComponent(btn);
+        if (label === "User Profile") {
+          btn.setOnClick(() => {
+            web_UI_page_manager.switchTo("profile");
+          });
+        }
+        if (label === "Users") {
+          btn.setOnClick(() => {
+            web_UI_page_manager.switchTo("users");
+          });
+        }
+        if (label === "Inspection") {
+          btn.setOnClick(() => {
+            web_UI_page_manager.switchTo("inspection");
+          });
+        }
+      }
+    });
+  }
+}
+function populate_profile_page(pages, styles) {
+  if (pages["profile"] != void 0 && styles.title != void 0 && styles.primary != void 0) {
+    add_header_elements(pages["profile"], styles, "User Profile");
+    const info_sub = new web_UI_component("div", { top: "18vh", left: "5vw", width: "40vw", height: "5vh" }, styles.title, "User Info");
+    pages["profile"].addComponent(info_sub);
+    const divider = new web_UI_component("div", { top: "20vh", left: "50vw", width: "0.01vw", height: "80vh" }, styles.primary, "");
+    pages["profile"].addComponent(divider);
+    const user_data = [["Name", "Abhi"], ["Email", "abhi@shipworkz.com"], ["Role", "Admin"]];
+    const user_cols = [{ header: "Field", width: "15vw" }, { header: "Value", width: "25vw" }];
+    generate_table(pages["profile"], styles, user_data, user_cols, 5, 25);
+    if (styles.title != void 0) {
+      const task_sub = new web_UI_component("div", { top: "18vh", left: "55vw", width: "40vw", height: "5vh" }, styles.title, "Assigned Tasks");
+      pages["profile"].addComponent(task_sub);
+    }
+    const task_data = [["Review Report 1", "High"], ["System Update", "Medium"]];
+    const task_cols = [{ header: "Task", width: "20vw" }, { header: "Priority", width: "20vw" }];
+    generate_table(pages["profile"], styles, task_data, task_cols, 55, 25);
+  }
+}
+function populate_users_page(pages, styles) {
+  if (pages["users"] != void 0 && styles.title != void 0 && styles.primary != void 0) {
+    add_header_elements(pages["users"], styles, "Users");
+    const btn_width = 15;
+    const btn_gap = 2;
+    const top_btns = "18vh";
+    const start_x = (100 - (3 * btn_width + 2 * btn_gap)) / 2;
+    const filter_btn = new web_UI_component("div", { top: top_btns, left: `${start_x}vw`, width: `${btn_width}vw`, height: "6vh" }, styles.primary, "Filter");
+    const add_btn = new web_UI_component("div", { top: top_btns, left: `${start_x + btn_width + btn_gap}vw`, width: `${btn_width}vw`, height: "6vh" }, styles.primary, "Add New");
+    const export_btn = new web_UI_component("div", { top: top_btns, left: `${start_x + 2 * btn_width + 2 * btn_gap}vw`, width: `${btn_width}vw`, height: "6vh" }, styles.primary, "Bulk Export");
+    pages["users"].addComponent(filter_btn);
+    pages["users"].addComponent(add_btn);
+    pages["users"].addComponent(export_btn);
+    const headers = [
+      { header: "Name", width: "20vw" },
+      { header: "Email", width: "25vw" },
+      { header: "Designation", width: "20vw" },
+      { header: "Role", width: "15vw" }
+    ];
+    const user_data = [
+      ["Abhi", "abhi@shipworkz.com", "Engineer", "Admin"],
+      ["John Doe", "john@example.com", "Manager", "User"],
+      ["Jane Smith", "jane@example.com", "Analyst", "User"]
+    ];
+    generate_table(pages["users"], styles, user_data, headers, 5, 28);
+  }
+}
+function populate_inspection_page(pages, styles, questions2, onComplete) {
+  const pageName = "inspection";
+  const page = new web_UI_page("Inspection");
+  web_UI_page_manager.register(pageName, page);
+  if (styles.header) {
+    const header = new web_UI_component("div", { top: "0vh", left: "0vw", width: "100vw", height: "8vh" }, styles.header, "Inspection Report");
+    page.addComponent(header);
+  }
+  const answers = [];
+  let currentIndex = 0;
+  function hideAllQuestionComponents() {
+    questionComponents.forEach((comps) => comps.forEach((c) => c.hide()));
+  }
+  const optionHeightVH = Math.max((100 - 8) / 3, 20);
+  const questionComponents = [];
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  function attachSpeechToInput(inputComp) {
+    if (!SpeechRecognition || styles.primary == void 0) {
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    const rectTop = parseFloat((inputComp.element.style.top || "50vh").replace("vh", ""));
+    const rectLeft = parseFloat((inputComp.element.style.left || "50vw").replace("vw", ""));
+    const btnTop = `${rectTop + 6}vh`;
+    const btnLeft = `${rectLeft + 22}vw`;
+    const micBtn = new web_UI_component("div", { top: btnTop, left: btnLeft, width: "6vw", height: "6vh" }, styles.primary, "\u{1F3A4}");
+    micBtn.element.style.fontSize = "20px";
+    micBtn.element.style.display = "flex";
+    micBtn.element.style.alignItems = "center";
+    micBtn.element.style.justifyContent = "center";
+    micBtn.element.style.cursor = "pointer";
+    micBtn.hide();
+    micBtn.setOnClick(() => {
+      try {
+        recognition.start();
+        micBtn.element.textContent = "\u25CF";
+      } catch (e) {
+        console.error("Speech start failed", e);
+      }
+    });
+    page.addComponent(micBtn);
+    recognition.addEventListener("result", (ev) => {
+      const transcript = ev.results[0][0].transcript;
+      if (inputComp.element instanceof HTMLInputElement) {
+        inputComp.element.value = transcript;
+      }
+      micBtn.element.textContent = "\u{1F3A4}";
+    });
+    recognition.addEventListener("end", () => {
+      micBtn.element.textContent = "\u{1F3A4}";
+    });
+    inputComp.onEnter(() => {
+    });
+    return micBtn;
+  }
+  questions2.forEach((q, qi) => {
+    if (styles.primary != void 0 && styles.title != void 0) {
+      const comps = [];
+      const qTop = "10vh";
+      const qLeft = "2vw";
+      const qWidth = "96vw";
+      const qHeight = "12vh";
+      const qTextComp = new web_UI_component("div", { top: qTop, left: qLeft, width: qWidth, height: qHeight }, styles.title ?? styles.primary, q.type === "mcq" ? q.text : q.text);
+      qTextComp.element.style.fontSize = "20pt";
+      qTextComp.hide();
+      page.addComponent(qTextComp);
+      comps.push(qTextComp);
+      if (q.type === "mcq") {
+        const availableTop = 10 + 12;
+        const availableVH = 100 - availableTop - 2;
+        const perOptionVH = Math.max(availableVH / Math.max(q.options.length, 1), 18);
+        q.options.forEach((opt, oi) => {
+          if (styles.primary != void 0) {
+            const top = `${availableTop + oi * perOptionVH}vh`;
+            const optComp = new web_UI_component("div", { top, left: "0vw", width: "100vw", height: `${perOptionVH}vh` }, styles.primary, opt);
+            optComp.element.style.fontSize = "28pt";
+            optComp.element.style.display = "flex";
+            optComp.element.style.alignItems = "center";
+            optComp.element.style.justifyContent = "center";
+            optComp.hide();
+            optComp.setOnClick(() => {
+              answers.push({ questionId: q.id, value: opt });
+              comps.forEach((c) => c.hide());
+              currentIndex = Math.min(currentIndex + 1, questions2.length - 1);
+              if (currentIndex < questions2.length) {
+                showQuestion(currentIndex);
+              } else {
+                if (onComplete)
+                  onComplete(answers);
+              }
+            });
+            page.addComponent(optComp);
+            comps.push(optComp);
+          }
+        });
+      } else if (q.type === "text") {
+        const inputTop = "30vh";
+        const inputLeft = "10vw";
+        const inputWidth = "80vw";
+        const inputHeight = "8vh";
+        const inputComp = new web_UI_component("text", { top: inputTop, left: inputLeft, width: inputWidth, height: inputHeight }, styles.input ?? styles.primary, q.placeholder ?? "");
+        inputComp.element.style.fontSize = "20pt";
+        inputComp.hide();
+        page.addComponent(inputComp);
+        comps.push(inputComp);
+        const micComp = attachSpeechToInput(inputComp);
+        if (micComp) {
+          micComp.hide();
+          comps.push(micComp);
+        }
+        const nextTop = "42vh";
+        const nextComp = new web_UI_component("div", { top: nextTop, left: "30vw", width: "40vw", height: "10vh" }, styles.primary, "Next");
+        nextComp.element.style.fontSize = "22pt";
+        nextComp.hide();
+        page.addComponent(nextComp);
+        comps.push(nextComp);
+        inputComp.onEnter(() => {
+          const val = inputComp.getValue();
+          answers.push({ questionId: q.id, value: val });
+          comps.forEach((c) => c.hide());
+          currentIndex = Math.min(currentIndex + 1, questions2.length - 1);
+          if (currentIndex < questions2.length)
+            showQuestion(currentIndex);
+          else if (onComplete)
+            onComplete(answers);
+        });
+        nextComp.setOnClick(() => {
+          const val = inputComp.getValue();
+          answers.push({ questionId: q.id, value: val });
+          comps.forEach((c) => c.hide());
+          currentIndex = Math.min(currentIndex + 1, questions2.length - 1);
+          if (currentIndex < questions2.length)
+            showQuestion(currentIndex);
+          else if (onComplete)
+            onComplete(answers);
+        });
+      }
+      questionComponents.push(comps);
+    }
+  });
+  const backBtn = new web_UI_component("div", { top: "92vh", left: "2vw", width: "12vw", height: "6vh" }, styles.primary ?? new web_UI_style(), "Back");
+  backBtn.element.style.fontSize = "16pt";
+  backBtn.hide();
+  backBtn.setOnClick(() => {
+    if (currentIndex > 0) {
+      answers.pop();
+      questionComponents[currentIndex]?.forEach((c) => c.hide());
+      currentIndex = Math.max(0, currentIndex - 1);
+      showQuestion(currentIndex);
+    } else {
+      web_UI_page_manager.switchTo("nav");
+    }
+  });
+  page.addComponent(backBtn);
+  function showQuestion(idx) {
+    questionComponents.forEach((list) => list.forEach((c) => c.hide()));
+    const comps = questionComponents[idx] || [];
+    comps.forEach((c) => c.show());
+    backBtn.show();
+  }
+  if (questions2.length > 0) {
+    currentIndex = 0;
+    showQuestion(0);
+  }
+  pages[pageName] = page;
+  return { page, getAnswers: () => answers };
+}
+var questions = [
+  { id: "q1", type: "mcq", text: "Is the unit powered on?", options: ["Yes", "No", "Unknown"] },
+  { id: "q2", type: "mcq", text: "Is the safety guard in place?", options: ["Yes", "No"] },
+  { id: "q3", type: "text", text: "Notes about the condition", placeholder: "Tap to speak or type notes" },
+  { id: "q4", type: "mcq", text: "Overall status", options: ["Pass", "Fail", "Requires follow-up"] }
+];
+function main() {
+  const styles = createStyles();
+  const pages = createPages();
+  populate_login_page(pages, styles);
+  populate_nav_page(pages, styles);
+  populate_profile_page(pages, styles);
+  populate_users_page(pages, styles);
+  populate_inspection_page(pages, styles, questions, (answers) => {
+    console.log("Inspection complete", answers);
+    web_UI_page_manager.switchTo("nav");
+  });
+  web_UI_page_manager.switchTo("login");
+}
+main();
+
+// dst/program_entry.js
+console.log(`Web App Components`);
+
+</script>
+	</body>
 </html>
